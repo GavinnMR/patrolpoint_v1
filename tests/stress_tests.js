@@ -18,6 +18,14 @@ window.PP_TESTS = (() => {
 
 function pass(label)                  { return { ok: true,  label }; }
 function fail(label, got, expected)   { return { ok: false, label, got, expected }; }
+
+function safeStr(val) {
+    if (val === null)      return 'null';
+    if (val === undefined) return 'undefined';
+    if (typeof val !== 'object') return String(val);
+    try { return JSON.stringify(val); }
+    catch (_) { return val?.constructor?.name ? `[${val.constructor.name}]` : '[Object]'; }
+}
 function manual(label)                { return { ok: 'manual', label }; }
 
 function chkEq(got, exp, label)       { return got === exp          ? pass(label) : fail(label, got, `=== ${exp}`); }
@@ -371,18 +379,23 @@ const SCENARIOS = [
 {
     id: 'G1-12', group: 'G1', n: 3,
     name: 'Outlier removal reduces P below 3 — warning, pipeline stops, no hull',
-    // 2 clustered points + 1 extreme point; with outlierMultiplier=2.5 the extreme one
-    // won't be flagged unless we push ratio high enough. Use a more extreme outlier.
+    // With default multiplier=2.5 and only 3 points, the centroid is pulled toward the
+    // outlier making it hard to flag. Lower the multiplier to 1.5 and use 4 points:
+    // 2 tight normal + 2 far outliers → 2 flagged, 2 remain < 3 → warning path fires.
     coords: [
-        { lat: 14.7028, lng: 121.0944 }, { lat: 14.7029, lng: 121.0945 },
-        { lat: 14.8500, lng: 121.2000 },
+        { lat: 14.7028, lng: 121.0944 }, // normal
+        { lat: 14.7030, lng: 121.0946 }, // normal
+        { lat: 14.6000, lng: 121.0000 }, // far outlier ~18km SW
+        { lat: 14.8000, lng: 121.2000 }, // far outlier ~18km NE
     ],
+    before() { CONFIG.convexHull.outlierMultiplier = 1.5; },
+    after()  { CONFIG.convexHull.outlierMultiplier = CONFIG_DEFAULTS.convexHull.outlierMultiplier; },
     check() { return [
-        chkNull(currentHull,                                          'no hull (stopped before hull computation)'),
-        chkNull(hullPolygon,                                          'no hull polygon on map'),
-        chkEq(bannerType(), 'warning',                                'warning banner shown'),
-        chkIncludes(bannerText(), 'outlier',                          'banner mentions "outlier"'),
-        chkEq(patrolMarkers.length, 0,                                'no patrol markers placed'),
+        chkNull(currentHull,                        'no hull (stopped before hull computation)'),
+        chkNull(hullPolygon,                        'no hull polygon on map'),
+        chkEq(bannerType(), 'warning',              'warning banner shown'),
+        chkIncludes(bannerText(), 'outlier',        'banner mentions "outlier"'),
+        chkEq(patrolMarkers.length, 0,              'no patrol markers placed'),
     ]; }
 },
 
@@ -1343,7 +1356,7 @@ function printResults(results, id) {
             console.log(`  %c✅ PASS    ${r.label}`, 'color:#009E73');
             passed++;
         } else {
-            console.log(`  %c❌ FAIL    ${r.label}  (got: ${JSON.stringify(r.got)}, expected: ${r.expected})`, 'color:#D55E00;font-weight:bold');
+            console.log(`  %c❌ FAIL    ${r.label}  (got: ${safeStr(r.got)}, expected: ${r.expected})`, 'color:#D55E00;font-weight:bold');
             failed++;
         }
     });
