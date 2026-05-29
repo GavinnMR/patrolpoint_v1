@@ -126,29 +126,46 @@ map.addControl(new ResetViewControl());
 fetch('./data/commonwealth_boundary.geojson')
     .then(r => r.json())
     .then(data => {
-        const ring = data.features[0].geometry.coordinates[0];
+        const ring = data.features[0].geometry.coordinates[0].slice(0, -1); // drop closing duplicate
 
-        // Dark mask: large outer box with the barangay cut out as a hole.
-        // evenodd fill rule makes the hole transparent regardless of winding order.
-        L.geoJSON({
-            type: 'Feature',
-            geometry: {
-                type: 'Polygon',
-                coordinates: [
-                    [[119, 13], [119, 16], [123, 16], [123, 13], [119, 13]],
-                    ring
-                ]
-            }
-        }, {
-            style: {
-                fillColor: '#1a1a2e',
-                fillOpacity: 0.70,
-                fillRule: 'evenodd',
-                stroke: false
-            }
-        }).addTo(map);
+        // Blur mask outside the barangay.
+        // A full-map div with backdrop-filter:blur is clipped via an SVG clipPath
+        // (evenodd rule) so only the exterior region is blurred. The clip is
+        // rebuilt in pixel space on every map move/zoom.
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const clipSvg = document.createElementNS(svgNS, 'svg');
+        clipSvg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+        const defs = document.createElementNS(svgNS, 'defs');
+        const clipPathEl = document.createElementNS(svgNS, 'clipPath');
+        clipPathEl.id = 'commonwealth-blur-clip';
+        clipPathEl.setAttribute('clipPathUnits', 'userSpaceOnUse');
+        const pathEl = document.createElementNS(svgNS, 'path');
+        pathEl.setAttribute('clip-rule', 'evenodd');
+        clipPathEl.appendChild(pathEl);
+        defs.appendChild(clipPathEl);
+        clipSvg.appendChild(defs);
+        map.getContainer().appendChild(clipSvg);
 
-        // Boundary outline on top of the mask
+        const blurDiv = document.createElement('div');
+        blurDiv.style.cssText = 'position:absolute;inset:0;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);pointer-events:none;z-index:300;clip-path:url(#commonwealth-blur-clip);';
+        map.getContainer().appendChild(blurDiv);
+
+        function updateBlurClip() {
+            const { x: W, y: H } = map.getSize();
+            const pts = ring.map(([lng, lat]) => {
+                const p = map.latLngToContainerPoint([lat, lng]);
+                return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+            });
+            // Outer rect (full map) + barangay polygon as hole — evenodd toggles fill
+            pathEl.setAttribute('d',
+                `M0,0 L${W},0 L${W},${H} L0,${H} Z M${pts[0]} L${pts.slice(1).join(' L')} Z`
+            );
+        }
+
+        updateBlurClip();
+        map.on('move zoom viewreset moveend zoomend resize', updateBlurClip);
+
+        // Boundary outline on top of the blur
         L.geoJSON(data, {
             style: {
                 color: '#aaaaaa',
