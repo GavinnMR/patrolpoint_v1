@@ -500,6 +500,13 @@ html, body {
   background: #e74c3c;
 }
 
+/* ── Settings gear button ── */
+
+#settings-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 /* ── Reset view button on map ── */
 
 .reset-view-btn {

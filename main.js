@@ -606,8 +606,9 @@ async function runPipeline() {
             const positions = r1.data.linearHandler.patrolPositions;
             positions.forEach((pos, i) => {
                 const color = patrolColor(i);
-                const marker = L.circleMarker([pos.lat, pos.lng], {
-                    radius: 9, color, fillColor: color, fillOpacity: 0.85, weight: 2
+                const marker = L.marker([pos.lat, pos.lng], {
+                    icon: makePatrolIcon(color, i + 1, false),
+                    zIndexOffset: 500
                 }).bindTooltip(`Patrol ${i + 1}`).addTo(map);
                 patrolMarkers.push(marker);
             });
@@ -1104,6 +1105,8 @@ document.querySelectorAll('#mode-toggle input[type=radio]').forEach(radio => {
 
 // ── RECALCULATE BUTTON ────────────────────────────────────────
 const recalcBtn = document.getElementById('recalculate-btn');
+const settingsBtn = document.getElementById('settings-btn');
+settingsBtn.disabled = true; // disabled until road network finishes loading
 recalcBtn.addEventListener('click', () => {
     if (pipelineRunning) return;
     runPipeline();
@@ -1441,5 +1444,6 @@ function computeBarangayArea() {
 function finalizeLoad() {
     loadingOverlay.style.display = 'none';
     recalcBtn.disabled = false;
+    settingsBtn.disabled = false;
     console.log('[PatrolPoint] Ready.');
 }
