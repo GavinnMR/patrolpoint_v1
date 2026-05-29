@@ -126,13 +126,36 @@ map.addControl(new ResetViewControl());
 fetch('./data/commonwealth_boundary.geojson')
     .then(r => r.json())
     .then(data => {
+        const ring = data.features[0].geometry.coordinates[0];
+
+        // Dark mask: large outer box with the barangay cut out as a hole.
+        // evenodd fill rule makes the hole transparent regardless of winding order.
+        L.geoJSON({
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: [
+                    [[119, 13], [119, 16], [123, 16], [123, 13], [119, 13]],
+                    ring
+                ]
+            }
+        }, {
+            style: {
+                fillColor: '#1a1a2e',
+                fillOpacity: 0.32,
+                fillRule: 'evenodd',
+                stroke: false
+            }
+        }).addTo(map);
+
+        // Boundary outline on top of the mask
         L.geoJSON(data, {
             style: {
-                color: '#888888',
+                color: '#aaaaaa',
                 weight: 1.5,
                 dashArray: '4 6',
                 fill: false,
-                opacity: 0.7
+                opacity: 0.9
             }
         }).addTo(map);
     })
