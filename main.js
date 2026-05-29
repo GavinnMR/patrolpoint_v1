@@ -142,7 +142,7 @@ fetch('./data/commonwealth_boundary.geojson')
         }, {
             style: {
                 fillColor: '#1a1a2e',
-                fillOpacity: 0.32,
+                fillOpacity: 0.70,
                 fillRule: 'evenodd',
                 stroke: false
             }
