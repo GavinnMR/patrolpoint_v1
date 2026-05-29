@@ -123,30 +123,20 @@ const ResetViewControl = L.Control.extend({
 map.addControl(new ResetViewControl());
 
 // ── COMMONWEALTH ADMINISTRATIVE BOUNDARY ──────────────────────
-// Approximate boundary polygon of Barangay Commonwealth, Quezon City
-const COMMONWEALTH_BOUNDARY = {
-    type: 'Feature',
-    geometry: {
-        type: 'Polygon',
-        coordinates: [[
-            [121.0830, 14.6940],
-            [121.0830, 14.7160],
-            [121.1070, 14.7160],
-            [121.1070, 14.6940],
-            [121.0830, 14.6940]
-        ]]
-    }
-};
-
-L.geoJSON(COMMONWEALTH_BOUNDARY, {
-    style: {
-        color: '#888888',
-        weight: 1.5,
-        dashArray: '4 6',
-        fill: false,
-        opacity: 0.7
-    }
-}).addTo(map);
+fetch('./data/commonwealth_boundary.geojson')
+    .then(r => r.json())
+    .then(data => {
+        L.geoJSON(data, {
+            style: {
+                color: '#888888',
+                weight: 1.5,
+                dashArray: '4 6',
+                fill: false,
+                opacity: 0.7
+            }
+        }).addTo(map);
+    })
+    .catch(() => console.warn('commonwealth_boundary.geojson not found — boundary not rendered.'));
 
 // ── MAP LEGEND ────────────────────────────────────────────────
 const Legend = L.Control.extend({
@@ -196,37 +186,37 @@ function onMapClick(e) {
 
 function normalNodeIcon() {
     return L.divIcon({
-        className: 'crime-node-icon',
-        html: '<span style="color:#dc2626;text-shadow:-1px -1px 0 #7f1d1d,1px -1px 0 #7f1d1d,-1px 1px 0 #7f1d1d,1px 1px 0 #7f1d1d;">✕</span>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
+        className: '',
+        html: '<div style="width:12px;height:12px;border-radius:50%;background:#e74c3c;border:2px solid #c0392b;box-shadow:0 1px 3px rgba(0,0,0,0.35);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
     });
 }
 
 function outlierNodeIcon() {
     return L.divIcon({
-        className: 'crime-node-icon',
-        html: '<span style="color:#E69F00;text-shadow:-1px -1px 0 #78350f,1px -1px 0 #78350f,-1px 1px 0 #78350f,1px 1px 0 #78350f;">✕</span>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
+        className: '',
+        html: '<div style="width:12px;height:12px;border-radius:50%;background:#f39c12;border:2px dashed #e67e22;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
     });
 }
 
 function flashNodeIcon() {
     return L.divIcon({
-        className: 'crime-node-icon',
-        html: '<span style="color:#fff;text-shadow:-1px -1px 0 #dc2626,1px -1px 0 #dc2626,-1px 1px 0 #dc2626,1px 1px 0 #dc2626;">✕</span>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
+        className: '',
+        html: '<div style="width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #e74c3c;box-shadow:0 0 6px rgba(231,76,60,0.7);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
     });
 }
 
 function excludedNodeIcon() {
     return L.divIcon({
-        className: 'crime-node-icon',
-        html: '<span style="color:#9ca3af;text-shadow:-1px -1px 0 #6b7280,1px -1px 0 #6b7280,-1px 1px 0 #6b7280,1px 1px 0 #6b7280;">✕</span>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
+        className: '',
+        html: '<div style="width:12px;height:12px;border-radius:50%;background:#9ca3af;border:2px solid #6b7280;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
     });
 }
 
@@ -345,6 +335,27 @@ function clearBanner() {
     warningBanner.style.display = 'none';
     warningBanner.textContent = '';
     warningBanner.className = '';
+}
+
+function showConfirmDialog(message, okLabel, onConfirm) {
+    document.getElementById('confirm-message').textContent = message;
+    const okBtn = document.getElementById('confirm-ok-btn');
+    okBtn.textContent = okLabel;
+    const modal = document.getElementById('confirm-modal');
+    modal.classList.add('open');
+
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+    function cleanup() {
+        modal.classList.remove('open');
+        okBtn.removeEventListener('click', handleOk);
+        cancelBtn.removeEventListener('click', handleCancel);
+    }
+    function handleOk() { cleanup(); onConfirm(); }
+    function handleCancel() { cleanup(); }
+
+    okBtn.addEventListener('click', handleOk);
+    cancelBtn.addEventListener('click', handleCancel);
 }
 
 // ── CLEAR MAP RESULTS ─────────────────────────────────────────
@@ -1067,17 +1078,18 @@ document.addEventListener('keydown', (e) => {
 
 // ── RESET BUTTON ──────────────────────────────────────────────
 document.getElementById('reset-btn').addEventListener('click', () => {
-    if (!confirm('Reset will clear all incident coordinates and results. Continue?')) return;
-    P = [];
-    crimeMarkers.forEach(m => m.remove());
-    crimeMarkers = [];
-    lastRemovedPoint = null;
-    pipelineResults = false;
-    clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
-    clearBanner();
-    document.getElementById('trace-stages').innerHTML = '';
-    document.getElementById('pipeline-summary').textContent = '';
-    updateUndoButton();
+    showConfirmDialog('Reset will clear all incident coordinates and results. Continue?', 'Confirm Reset', () => {
+        P = [];
+        crimeMarkers.forEach(m => m.remove());
+        crimeMarkers = [];
+        lastRemovedPoint = null;
+        pipelineResults = false;
+        clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
+        clearBanner();
+        document.getElementById('trace-stages').innerHTML = '';
+        document.getElementById('pipeline-summary').textContent = '';
+        updateUndoButton();
+    });
 });
 
 // ── UNDO BUTTON ───────────────────────────────────────────────
@@ -1142,31 +1154,33 @@ document.getElementById('import-btn').addEventListener('click', () => {
     }
 
     const existingCount = P.length;
-    const confirmMsg = `Importing will replace ${existingCount} existing incident point${existingCount !== 1 ? 's' : ''}. Continue?`;
-    if (existingCount > 0 && !confirm(confirmMsg)) return;
 
-    // Clear existing
-    P = [];
-    crimeMarkers.forEach(m => m.remove());
-    crimeMarkers = [];
-    lastRemovedPoint = null;
-    updateUndoButton();
+    function doImport() {
+        P = [];
+        crimeMarkers.forEach(m => m.remove());
+        crimeMarkers = [];
+        lastRemovedPoint = null;
+        updateUndoButton();
 
-    // Plot imported points
-    parsed.forEach(pt => addCrimeNode(pt));
+        parsed.forEach(pt => addCrimeNode(pt));
 
-    // Outlier detection — restyle flagged markers after all are plotted
-    const outlierCount = detectAndMarkOutliers(parsed, crimeMarkers);
+        const outlierCount = detectAndMarkOutliers(parsed, crimeMarkers);
 
-    document.getElementById('coord-input').value = '';
+        document.getElementById('coord-input').value = '';
 
-    let msg = `${parsed.length} point${parsed.length !== 1 ? 's' : ''} imported successfully.`;
-    if (skipped > 0) msg += ` ${skipped} line${skipped !== 1 ? 's' : ''} skipped due to invalid format.`;
-    if (outlierCount > 0) msg += ` ${outlierCount} flagged as potential outlier${outlierCount !== 1 ? 's' : ''} (orange markers).`;
-    showImportMessage(msg, 'success');
-    setTimeout(() => { document.getElementById('import-message').style.display = 'none'; }, 3000);
+        let msg = `${parsed.length} point${parsed.length !== 1 ? 's' : ''} imported successfully.`;
+        if (skipped > 0) msg += ` ${skipped} line${skipped !== 1 ? 's' : ''} skipped due to invalid format.`;
+        if (outlierCount > 0) msg += ` ${outlierCount} flagged as potential outlier${outlierCount !== 1 ? 's' : ''} (orange markers).`;
+        showImportMessage(msg, 'success');
+        setTimeout(() => { document.getElementById('import-message').style.display = 'none'; }, 3000);
+    }
 
-    runPipeline();
+    if (existingCount > 0) {
+        const confirmMsg = `Importing will replace ${existingCount} existing incident point${existingCount !== 1 ? 's' : ''}. Continue?`;
+        showConfirmDialog(confirmMsg, 'Import', doImport);
+        return;
+    }
+    doImport();
 });
 
 function showImportMessage(text, type) {
