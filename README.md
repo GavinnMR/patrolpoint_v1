@@ -2,7 +2,7 @@
 
 A client-side web application that optimally deploys patrol units across a barangay-level danger zone derived from user-plotted crime incident coordinates.
 
-**[Live Demo →](https://gavinnmr.github.io/patrolpoint_v1/)**
+**[Live Demo →](https://gavinnmr.github.io/PatrolPoint/)**
 
 ---
 
