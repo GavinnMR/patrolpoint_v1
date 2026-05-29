@@ -1,6 +1,12 @@
 /* ============================================================
    Stage 4 — Backtracking TSP
+   Globals from dijkstra.js (must load first): normalizeEdgeKey, reconstructPath
+   Globals from main.js (available at pipeline call time): haversineDistance
    ============================================================ */
+
+if (typeof normalizeEdgeKey !== 'function' || typeof reconstructPath !== 'function') {
+    throw new Error('[tsp.js] dijkstra.js must be loaded before tsp.js (normalizeEdgeKey / reconstructPath missing).');
+}
 
 // computeTSP — find optimal closed-loop circuit for one patrol zone
 //

@@ -1,4 +1,5 @@
 // Stage 3: Zone Assignment
+// Globals from main.js (available at pipeline call time): haversineDistance
 
 // Snap p to the nearest validCandidate within hullDiameter, expanding radius by 50% on miss
 function _za_snapToNearest(p, validCandidates, hullDiameter, config) {

@@ -107,6 +107,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 window.addEventListener('resize', () => map.invalidateSize());
 
+if (typeof L.polylineDecorator !== 'function') {
+    console.warn('[PatrolPoint] Leaflet PolylineDecorator plugin did not load — route direction arrows will not be shown. Check CDN availability.');
+}
+
 // Reset View button
 const ResetViewControl = L.Control.extend({
     options: { position: 'topright' },
@@ -1386,9 +1390,10 @@ function runConnectivityCheck() {
     const visited = new Set();
     const queue = [firstId];
     visited.add(firstId);
+    let head = 0; // head pointer — O(1) dequeue instead of O(n) shift()
 
-    while (queue.length > 0) {
-        const current = queue.shift();
+    while (head < queue.length) {
+        const current = queue[head++];
         for (const { neighborId } of adjacencyList.get(current)) {
             if (!visited.has(neighborId)) {
                 visited.add(neighborId);

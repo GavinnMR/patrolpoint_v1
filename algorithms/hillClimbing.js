@@ -1,4 +1,5 @@
 // Stage 2: Hill Climbing Patrol Placement
+// Globals from main.js (available at pipeline call time): haversineDistance
 
 function _hc_shuffle(arr) {
     const a = arr.slice();

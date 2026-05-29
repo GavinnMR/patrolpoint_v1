@@ -1,4 +1,5 @@
 // Stage 1: Brute Force Convex Hull
+// Globals from main.js (available at pipeline call time): haversineDistance, barangayArea_m2
 
 function computeConvexHull(points, n, config) {
     const log = [];
